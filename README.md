@@ -27,6 +27,7 @@ This module lets you run JavaScript code inside the Lua runtime — useful for p
 **Features:**
 - Full ES2020+ JavaScript via QuickJS (2025-09-13)
 - Bidirectional value conversion: Lua ↔ JS (nil, boolean, integer, float, string, table/array ↔ object/array)
+- **Lua functions as JS callbacks** — pass a Lua function to `ctx:set()` / `ctx:call()` and it becomes a native callable JS function
 - `console.log / warn / error / info` piped to stdout
 - Async / Promise support via pending job execution
 - Per-context memory and stack size limits
@@ -78,6 +79,18 @@ local val = ctx:get("name")  -- "Skydimo"
 -- Define and call a JS function
 ctx:eval("function add(a, b) { return a + b; }")
 local sum = ctx:call("add", 10, 20)  -- 30
+
+-- Pass a Lua function as a JS callback
+ctx:set("add", function(a, b) return a + b end)
+local sum2 = ctx:eval("add(3, 4)")  -- 7
+
+-- Lua functions survive across multiple JS calls
+ctx:set("counter", (function()
+    local n = 0
+    return function() n = n + 1; return n end
+end)())
+ctx:eval("counter(); counter()")
+local c = ctx:eval("counter()")  -- 3
 
 -- Always close when done (or let GC collect it)
 ctx:close()
@@ -139,10 +152,11 @@ Throws a Lua error if the function doesn't exist or throws.
 
 #### `ctx:set(name, value)`
 
-Set a JavaScript global variable from a Lua value.
+Set a JavaScript global variable from a Lua value. When `value` is a Lua function it is automatically wrapped as a JS `Function`; JS can call it and arguments/return values are converted transparently.
 
 ```lua
 ctx:set("config", { debug = true, port = 8080 })
+ctx:set("log", function(msg) print("[JS]", msg) end)
 ```
 
 #### `ctx:get(name)`
@@ -182,6 +196,7 @@ Free the JS context and runtime immediately. Safe to call multiple times. Also c
 | `string` | `string` | Binary safe |
 | `table` (array) | `Array` | Sequential integer keys 1..n |
 | `table` (object) | `Object` | String and numeric keys |
+| `function` | `Function` | Wrapped as a native JS callable; up to 256 callbacks per context |
 | JS `null` | `nil` | |
 | JS `Array` | `table` (array) | 0-based → 1-based |
 | JS `Object` | `table` (hash) | |

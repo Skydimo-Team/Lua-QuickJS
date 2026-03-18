@@ -29,6 +29,9 @@
 /* Maximum recursion depth for value conversion */
 #define MAX_CONVERT_DEPTH 64
 
+/* Maximum number of Lua callback slots */
+#define MAX_LUA_CALLBACKS 256
+
 /* Metatable names */
 #define LUA_QJS_CONTEXT "QuickJS.Context"
 
@@ -39,6 +42,9 @@
 typedef struct {
     JSRuntime *rt;
     JSContext *ctx;
+    lua_State *L;       /* owning Lua state (for callbacks) */
+    int cb_refs[MAX_LUA_CALLBACKS];  /* LUA_REGISTRYINDEX refs */
+    int cb_count;                    /* number of registered callbacks */
     int closed;
 } LuaQJSContext;
 
@@ -185,6 +191,59 @@ static int lua_table_is_array(lua_State *L, int idx)
     return (count == (int)len);
 }
 
+/* Forward declarations for value conversion */
+static int js_to_lua(lua_State *L, JSContext *ctx, JSValue val, int depth);
+
+/* ============================================================
+ * Lua function → JS callback trampoline
+ *
+ * Wraps a Lua function (stored as luaL_ref) into a JS function.
+ * When JS calls this function, it converts args JS→Lua, calls the
+ * Lua function, and converts the result Lua→JS.
+ * ============================================================ */
+
+static JSValue js_lua_callback_trampoline(JSContext *ctx, JSValueConst this_val,
+                                          int argc, JSValueConst *argv,
+                                          int magic, JSValue *func_data)
+{
+    /* func_data[0] = Lua registry ref (as int32) */
+    LuaQJSContext *qctx = (LuaQJSContext *)JS_GetContextOpaque(ctx);
+    if (!qctx || qctx->closed)
+        return JS_ThrowInternalError(ctx, "Lua context is closed");
+
+    int ref;
+    JS_ToInt32(ctx, &ref, func_data[0]);
+
+    lua_State *L = qctx->L;
+    int top = lua_gettop(L);
+
+    /* Push the Lua function from registry */
+    lua_rawgeti(L, LUA_REGISTRYINDEX, ref);
+    if (!lua_isfunction(L, -1)) {
+        lua_settop(L, top);
+        return JS_ThrowInternalError(ctx, "Lua callback reference is invalid");
+    }
+
+    /* Push arguments (JS → Lua) */
+    for (int i = 0; i < argc; i++) {
+        js_to_lua(L, ctx, argv[i], 0);
+    }
+
+    /* Call the Lua function */
+    if (lua_pcall(L, argc, 1, 0) != LUA_OK) {
+        const char *err = lua_tostring(L, -1);
+        JSValue js_err = JS_ThrowInternalError(ctx, "Lua callback error: %s",
+                                               err ? err : "unknown");
+        lua_settop(L, top);
+        return js_err;
+    }
+
+    /* Convert result (Lua → JS) */
+    JSValue result = lua_to_js(L, ctx, -1, 0);
+    lua_settop(L, top);
+    return result;
+}
+
 static JSValue lua_to_js(lua_State *L, JSContext *ctx, int idx, int depth)
 {
     if (depth > MAX_CONVERT_DEPTH)
@@ -254,6 +313,24 @@ static JSValue lua_to_js(lua_State *L, JSContext *ctx, int idx, int depth)
             }
             return obj;
         }
+    }
+
+    case LUA_TFUNCTION: {
+        /* Store the Lua function in the registry */
+        lua_pushvalue(L, idx);
+        int ref = luaL_ref(L, LUA_REGISTRYINDEX);
+
+        /* Track for cleanup */
+        LuaQJSContext *qctx = (LuaQJSContext *)JS_GetContextOpaque(ctx);
+        if (qctx && qctx->cb_count < MAX_LUA_CALLBACKS) {
+            qctx->cb_refs[qctx->cb_count++] = ref;
+        }
+
+        /* Create JS function with the registry ref as closure data */
+        JSValue ref_val = JS_NewInt32(ctx, ref);
+        return JS_NewCFunctionData(ctx, js_lua_callback_trampoline,
+                                   0 /* length */, 0 /* magic */,
+                                   1, &ref_val);
     }
 
     default:
@@ -357,6 +434,9 @@ static int lqjs_new(lua_State *L)
     qctx = (LuaQJSContext *)lua_newuserdatauv(L, sizeof(LuaQJSContext), 0);
     qctx->rt = NULL;
     qctx->ctx = NULL;
+    qctx->L = L;
+    qctx->cb_count = 0;
+    memset(qctx->cb_refs, 0, sizeof(qctx->cb_refs));
     qctx->closed = 0;
     luaL_setmetatable(L, LUA_QJS_CONTEXT);
 
@@ -375,6 +455,9 @@ static int lqjs_new(lua_State *L)
         qctx->rt = NULL;
         return luaL_error(L, "failed to create QuickJS context");
     }
+
+    /* Store qctx as opaque pointer for callback trampoline access */
+    JS_SetContextOpaque(qctx->ctx, qctx);
 
     /* Add console.log support */
     js_add_console(qctx->ctx);
@@ -544,6 +627,13 @@ static int lqjs_close(lua_State *L)
     LuaQJSContext *qctx = (LuaQJSContext *)luaL_checkudata(L, 1, LUA_QJS_CONTEXT);
     if (!qctx->closed) {
         qctx->closed = 1;
+
+        /* Release all Lua callback references */
+        for (int i = 0; i < qctx->cb_count; i++) {
+            luaL_unref(L, LUA_REGISTRYINDEX, qctx->cb_refs[i]);
+        }
+        qctx->cb_count = 0;
+
         if (qctx->ctx) {
             JS_FreeContext(qctx->ctx);
             qctx->ctx = NULL;

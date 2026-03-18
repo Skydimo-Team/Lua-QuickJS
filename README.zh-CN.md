@@ -27,6 +27,7 @@ Lua 5.4 C 模块，将 [QuickJS](https://bellard.org/quickjs/) JavaScript 引擎
 **特性：**
 - 通过 QuickJS（2025-09-13）支持完整的 ES2020+ JavaScript
 - Lua ↔ JS 双向值转换（nil、bool、整数、浮点数、字符串、table/数组 ↔ object/array）
+- **Lua 函数作为 JS 回调** — 通过 `ctx:set()` / `ctx:call()` 传入的 Lua 函数会自动包装为可在 JS 侧调用的原生 JS 函数
 - `console.log / warn / error / info` 输出到 stdout
 - 通过 pending job 执行支持 async / Promise
 - 可为每个 context 单独设置内存和调用栈限制
@@ -79,6 +80,18 @@ local val = ctx:get("name")  -- "Skydimo"
 ctx:eval("function add(a, b) { return a + b; }")
 local sum = ctx:call("add", 10, 20)  -- 30
 
+-- 将 Lua 函数作为 JS 回调传入
+ctx:set("add", function(a, b) return a + b end)
+local sum2 = ctx:eval("add(3, 4)")  -- 7
+
+-- Lua 函数可被 JS 多次调用
+ctx:set("counter", (function()
+    local n = 0
+    return function() n = n + 1; return n end
+end)())
+ctx:eval("counter(); counter()")
+local c = ctx:eval("counter()")  -- 3
+
 -- 用完后关闭（也可以让 GC 自动回收）
 ctx:close()
 ```
@@ -119,7 +132,11 @@ ctx:close()
 
 #### `ctx:set(name, value)`
 
-从 Lua 值设置一个 JS 全局变量。
+从 Lua 值设置一个 JS 全局变量。若 `value` 为 Lua 函数，将自动包装为 JS `Function`，JS 侧可直接调用，参数与返回值均自动转换。
+
+```lua
+ctx:set("log", function(msg) print("[JS]", msg) end)
+```
 
 #### `ctx:get(name)`
 
@@ -150,6 +167,7 @@ ctx:close()
 | `string` | `string` | 二进制安全 |
 | `table`（数组） | `Array` | 顺序整数键 1..n |
 | `table`（哈希） | `Object` | 字符串和数字键 |
+| `function` | `Function` | 包装为原生 JS 可调用对象；每个 context 最多 256 个回调 |
 | JS `null` | `nil` | |
 | JS `Array` | `table`（数组） | 0-based → 1-based |
 | JS `Object` | `table`（哈希） | |
