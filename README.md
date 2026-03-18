@@ -2,7 +2,7 @@
 
 > 中文版：[README.zh-CN.md](README.zh-CN.md)
 
-A Lua 5.4 C module that embeds the [QuickJS](https://bellard.org/quickjs/) JavaScript engine, built for the [Skydimo](https://skydimo.com) RGB lighting control application's Lua plugin system.
+A Lua 5.4 C module that embeds the [QuickJS](https://bellard.org/quickjs/) JavaScript engine into Lua.
 
 Compiles to `quickjs.dll` (Windows) or `quickjs.so` (Linux).
 
@@ -22,7 +22,7 @@ Compiles to `quickjs.dll` (Windows) or `quickjs.so` (Linux).
 
 ## Overview
 
-Skydimo's plugin system is written in **Lua 5.4**. This module lets plugins run JavaScript code inside the Lua runtime — useful for porting existing JS-based device logic, running bundled scripts, or bridging third-party JS libraries.
+This module lets you run JavaScript code inside the Lua runtime — useful for porting existing JS logic, running bundled scripts, or bridging third-party JS libraries.
 
 **Features:**
 - Full ES2020+ JavaScript via QuickJS (2025-09-13)

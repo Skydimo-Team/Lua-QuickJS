@@ -2,7 +2,7 @@
 
 > English version: [README.md](README.md)
 
-Lua 5.4 C 模块，将 [QuickJS](https://bellard.org/quickjs/) JavaScript 引擎嵌入 Lua，专为 [Skydimo](https://skydimo.com) RGB 灯光控制应用的 Lua 插件系统设计。
+Lua 5.4 C 模块，将 [QuickJS](https://bellard.org/quickjs/) JavaScript 引擎嵌入 Lua。
 
 编译产物为 `quickjs.dll`（Windows）或 `quickjs.so`（Linux）。
 
@@ -22,7 +22,7 @@ Lua 5.4 C 模块，将 [QuickJS](https://bellard.org/quickjs/) JavaScript 引擎
 
 ## 概述
 
-Skydimo 的插件系统使用 **Lua 5.4** 编写。本模块允许插件在 Lua 运行时中执行 JavaScript 代码——适用于移植已有的 JS 设备逻辑、运行打包脚本或桥接第三方 JS 库。
+本模块允许在 Lua 运行时中执行 JavaScript 代码，适用于在 Lua 项目中嵌入 JS 逻辑、运行打包脚本或桥接第三方 JS 库。
 
 **特性：**
 - 通过 QuickJS（2025-09-13）支持完整的 ES2020+ JavaScript
