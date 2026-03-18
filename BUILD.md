@@ -1,13 +1,12 @@
-# Lua QuickJS 构建指南
+# 构建指南
 
-本项目是一个 Lua 5.4 C 模块，将 [QuickJS](https://bellard.org/quickjs/)（2025-09-13）JavaScript 引擎嵌入 Lua，编译产物为 `quickjs.dll`（Windows）或 `quickjs.so`（Linux）。
+> 项目概述、API 参考和用法示例请见 [README.md](README.md)。
 
 ---
 
 ## 目录
 
 - [依赖项](#依赖项)
-- [项目结构](#项目结构)
 - [编译步骤](#编译步骤)
 - [运行测试](#运行测试)
 - [CMake 配置参数说明](#cmake-配置参数说明)
@@ -47,24 +46,6 @@ scoop install lua
 - 导入库：`C:\Users\<用户名>\scoop\apps\lua\current\lib\liblua.dll.a`
 
 **手动编译：** 从 https://www.lua.org/download.html 下载源码自行编译。
-
----
-
-## 项目结构
-
-```
-Lua-QuickJS/
-├── CMakeLists.txt          # CMake 构建脚本
-├── lua_quickjs.c           # Lua ↔ QuickJS 绑定层（主要源码）
-├── test_quickjs.lua        # 功能测试脚本
-└── dependence/
-    └── QuickJS/            # QuickJS 引擎源码（Git 子模块）
-        ├── quickjs.c/h
-        ├── cutils.c/h
-        ├── dtoa.c/h
-        ├── libregexp.c/h
-        └── libunicode.c/h
-```
 
 ---
 

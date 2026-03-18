@@ -14,7 +14,7 @@
  *   local obj = ctx:eval("({a:1, b:[2,3]})")   -- {a=1, b={2,3}}
  *   ctx:close()
  *
- * MIT License - Copyright (c) 2026
+ * MIT License - Copyright (c) 2026 Skydimo Team
  */
 
 #include <stdlib.h>
