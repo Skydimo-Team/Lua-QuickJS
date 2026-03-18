@@ -1,0 +1,37 @@
+# Build output
+build/
+*.dll
+*.so
+*.dylib
+*.exp
+*.lib
+*.pdb
+*.ilk
+*.obj
+*.o
+
+# CMake
+CMakeCache.txt
+CMakeFiles/
+cmake_install.cmake
+.ninja_deps
+.ninja_log
+build.ninja
+Makefile
+
+# IDE / Editor
+.vs/
+.vscode/
+*.suo
+*.user
+*.sln
+*.vcxproj*
+
+# Test artifacts
+test_*.exe
+*.exe
+
+# OS
+Thumbs.db
+Desktop.ini
+.DS_Store
