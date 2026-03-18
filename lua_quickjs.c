@@ -469,6 +469,7 @@ static int lqjs_new(lua_State *L)
 static int lqjs_eval(lua_State *L)
 {
     LuaQJSContext *qctx = check_context(L, 1);
+    qctx->L = L;  /* keep lua_State current for callback trampolines */
     size_t code_len;
     const char *code = luaL_checklstring(L, 2, &code_len);
     const char *filename = luaL_optstring(L, 3, "<eval>");
@@ -499,6 +500,7 @@ static int lqjs_eval(lua_State *L)
 static int lqjs_eval_module(lua_State *L)
 {
     LuaQJSContext *qctx = check_context(L, 1);
+    qctx->L = L;  /* keep lua_State current for callback trampolines */
     size_t code_len;
     const char *code = luaL_checklstring(L, 2, &code_len);
     const char *filename = luaL_optstring(L, 3, "<module>");
@@ -529,6 +531,7 @@ static int lqjs_eval_module(lua_State *L)
 static int lqjs_call(lua_State *L)
 {
     LuaQJSContext *qctx = check_context(L, 1);
+    qctx->L = L;  /* keep lua_State current for callback trampolines */
     const char *name = luaL_checkstring(L, 2);
     int nargs = lua_gettop(L) - 2;
 
@@ -588,6 +591,7 @@ static int lqjs_call(lua_State *L)
 static int lqjs_set(lua_State *L)
 {
     LuaQJSContext *qctx = check_context(L, 1);
+    qctx->L = L;  /* keep lua_State current for callback trampolines */
     const char *name = luaL_checkstring(L, 2);
     luaL_checkany(L, 3);
 
@@ -602,6 +606,7 @@ static int lqjs_set(lua_State *L)
 static int lqjs_get(lua_State *L)
 {
     LuaQJSContext *qctx = check_context(L, 1);
+    qctx->L = L;  /* keep lua_State current for callback trampolines */
     const char *name = luaL_checkstring(L, 2);
 
     JSValue global = JS_GetGlobalObject(qctx->ctx);
