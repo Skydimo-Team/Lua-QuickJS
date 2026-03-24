@@ -74,7 +74,20 @@ target_compile_options(quickjs PRIVATE
 # Link libraries
 # ============================================================
 if(WIN32)
-    target_link_libraries(quickjs PRIVATE ws2_32 pthread)
+    target_link_libraries(quickjs PRIVATE ws2_32)
+    # Statically embed MinGW runtime so the DLL has no external MinGW
+    # dependencies on end-user machines.
+    # -static-libgcc embeds libgcc; the static mcfgthread and winpthread
+    # archives are linked via target_link_libraries so they appear after
+    # object files in the linker command (required for symbol resolution).
+    # lua54.dll intentionally stays dynamic: a Lua module must share the
+    # host Lua runtime's C API tables or type checks will break.
+    target_link_options(quickjs PRIVATE
+        -static-libgcc
+    )
+    target_link_libraries(quickjs PRIVATE
+        -Wl,-Bstatic -lmcfgthread -lwinpthread -Wl,-Bdynamic
+    )
 endif()
 
 if(LUA_LIBRARY)
